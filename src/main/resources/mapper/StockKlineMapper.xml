@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.like.a_share_screener.persistence.mapper.StockKlineMapper">
+	<select id="selectLatestBarTime" resultType="java.time.LocalDateTime">
+		SELECT MAX(bar_time)
+		FROM stock_kline
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+	</select>
+
+	<select id="selectBars" resultType="com.like.a_share_screener.persistence.entity.StockKlineEntity">
+		SELECT id, code, timeframe, bar_time, fqt, open, high, low, close, volume, amount, amplitude_pct,
+			   change_pct, change_amt, turnover_pct, created_at, updated_at
+		FROM stock_kline
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+		<if test="fromInclusive != null">
+			AND bar_time &gt;= #{fromInclusive}
+		</if>
+		<if test="toInclusive != null">
+			AND bar_time &lt;= #{toInclusive}
+		</if>
+		<choose>
+			<when test="asc">
+				ORDER BY bar_time ASC
+			</when>
+			<otherwise>
+				ORDER BY bar_time DESC
+			</otherwise>
+		</choose>
+		<if test="limit != null and limit &gt; 0">
+			LIMIT #{limit}
+		</if>
+	</select>
+
+	<insert id="upsertBatch">
+		INSERT INTO stock_kline
+		(code, timeframe, bar_time, fqt, open, high, low, close, volume, amount, amplitude_pct, change_pct,
+		change_amt, turnover_pct)
+		VALUES
+		<foreach collection="items" item="item" separator=",">
+			(#{item.code}, #{item.timeframe}, #{item.barTime}, #{item.fqt}, #{item.open}, #{item.high}, #{item.low},
+			#{item.close}, #{item.volume}, #{item.amount}, #{item.amplitudePct}, #{item.changePct},
+			#{item.changeAmt}, #{item.turnoverPct})
+		</foreach>
+		ON DUPLICATE KEY UPDATE
+			open = VALUES(open),
+			high = VALUES(high),
+			low = VALUES(low),
+			close = VALUES(close),
+			volume = VALUES(volume),
+			amount = VALUES(amount),
+			amplitude_pct = VALUES(amplitude_pct),
+			change_pct = VALUES(change_pct),
+			change_amt = VALUES(change_amt),
+			turnover_pct = VALUES(turnover_pct),
+			fqt = VALUES(fqt),
+			updated_at = CURRENT_TIMESTAMP
+	</insert>
+</mapper>

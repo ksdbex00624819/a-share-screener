@@ -18,8 +18,8 @@ class EastmoneyKlineClientTest {
 		EastmoneyKlineClient client = new EastmoneyKlineClient(executor, properties,
 				new EastmoneyKlineParser(new ObjectMapper()));
 
-		Assertions.assertThatThrownBy(() -> client.fetchDailyKlines("0.000001",
-				LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2), 1))
+		Assertions.assertThatThrownBy(() -> client.fetchKlines("0.000001", 101, 1,
+				LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2), null))
 				.isInstanceOf(EastmoneyApiException.class);
 	}
 
@@ -33,8 +33,8 @@ class EastmoneyKlineClientTest {
 		EastmoneyKlineClient client = new EastmoneyKlineClient(executor, properties,
 				new EastmoneyKlineParser(new ObjectMapper()));
 
-		Assertions.assertThatThrownBy(() -> client.fetchDailyKlines("0.000001",
-				LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2), 1))
+		Assertions.assertThatThrownBy(() -> client.fetchKlines("0.000001", 101, 1,
+				LocalDate.of(2024, 1, 1), LocalDate.of(2024, 1, 2), null))
 				.isInstanceOf(EastmoneyApiException.class);
 	}
 

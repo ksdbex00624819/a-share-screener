@@ -6,6 +6,8 @@ import com.like.a_share_screener.client.dto.EastmoneyKlineResponse;
 import com.like.a_share_screener.domain.Candle;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -13,6 +15,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EastmoneyKlineParser {
+	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 	private final ObjectMapper objectMapper;
 
 	public EastmoneyKlineParser(ObjectMapper objectMapper) {
@@ -44,8 +47,14 @@ public class EastmoneyKlineParser {
 		if (parts.length < 11) {
 			throw new IllegalArgumentException("Unexpected kline line: " + line);
 		}
+		String timePart = parts[0];
+		boolean hasTime = timePart.contains(" ");
+		LocalDateTime barTime = hasTime
+				? LocalDateTime.parse(timePart, DATE_TIME_FORMAT)
+				: LocalDate.parse(timePart).atStartOfDay();
 		return new Candle(
-				LocalDate.parse(parts[0]),
+				barTime,
+				hasTime,
 				toBigDecimal(parts[1]),
 				toBigDecimal(parts[3]),
 				toBigDecimal(parts[4]),

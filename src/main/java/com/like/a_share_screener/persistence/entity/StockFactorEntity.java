@@ -3,17 +3,14 @@ package com.like.a_share_screener.persistence.entity;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * @deprecated Use {@link StockFactorEntity} for multi-timeframe storage.
- */
-@Deprecated
-@TableName("stock_factor_daily")
-public class StockFactorDailyEntity {
+@TableName("stock_factor")
+public class StockFactorEntity {
 	private String code;
-	private LocalDate tradeDate;
+	private String timeframe;
+	private LocalDateTime barTime;
+	private Integer fqt;
 	private BigDecimal ma5;
 	private BigDecimal ma10;
 	private BigDecimal ma20;
@@ -32,6 +29,12 @@ public class StockFactorDailyEntity {
 	private BigDecimal kdjK;
 	private BigDecimal kdjD;
 	private BigDecimal kdjJ;
+	private BigDecimal volMa5;
+	private BigDecimal volMa10;
+	private BigDecimal volMa20;
+	private BigDecimal volMa60;
+	private BigDecimal amtMa20;
+	private BigDecimal volRatio20;
 	@TableField("created_at")
 	private LocalDateTime createdAt;
 	@TableField("updated_at")
@@ -45,12 +48,28 @@ public class StockFactorDailyEntity {
 		this.code = code;
 	}
 
-	public LocalDate getTradeDate() {
-		return tradeDate;
+	public String getTimeframe() {
+		return timeframe;
 	}
 
-	public void setTradeDate(LocalDate tradeDate) {
-		this.tradeDate = tradeDate;
+	public void setTimeframe(String timeframe) {
+		this.timeframe = timeframe;
+	}
+
+	public LocalDateTime getBarTime() {
+		return barTime;
+	}
+
+	public void setBarTime(LocalDateTime barTime) {
+		this.barTime = barTime;
+	}
+
+	public Integer getFqt() {
+		return fqt;
+	}
+
+	public void setFqt(Integer fqt) {
+		this.fqt = fqt;
 	}
 
 	public BigDecimal getMa5() {
@@ -195,6 +214,54 @@ public class StockFactorDailyEntity {
 
 	public void setKdjJ(BigDecimal kdjJ) {
 		this.kdjJ = kdjJ;
+	}
+
+	public BigDecimal getVolMa5() {
+		return volMa5;
+	}
+
+	public void setVolMa5(BigDecimal volMa5) {
+		this.volMa5 = volMa5;
+	}
+
+	public BigDecimal getVolMa10() {
+		return volMa10;
+	}
+
+	public void setVolMa10(BigDecimal volMa10) {
+		this.volMa10 = volMa10;
+	}
+
+	public BigDecimal getVolMa20() {
+		return volMa20;
+	}
+
+	public void setVolMa20(BigDecimal volMa20) {
+		this.volMa20 = volMa20;
+	}
+
+	public BigDecimal getVolMa60() {
+		return volMa60;
+	}
+
+	public void setVolMa60(BigDecimal volMa60) {
+		this.volMa60 = volMa60;
+	}
+
+	public BigDecimal getAmtMa20() {
+		return amtMa20;
+	}
+
+	public void setAmtMa20(BigDecimal amtMa20) {
+		this.amtMa20 = amtMa20;
+	}
+
+	public BigDecimal getVolRatio20() {
+		return volRatio20;
+	}
+
+	public void setVolRatio20(BigDecimal volRatio20) {
+		this.volRatio20 = volRatio20;
 	}
 
 	public LocalDateTime getCreatedAt() {

@@ -1,10 +1,11 @@
 package com.like.a_share_screener.domain;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record Candle(
-		LocalDate tradeDate,
+		LocalDateTime barTime,
+		boolean hasTime,
 		BigDecimal open,
 		BigDecimal high,
 		BigDecimal low,

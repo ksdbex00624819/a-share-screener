@@ -14,7 +14,6 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Component
 public class EastmoneyKlineClient {
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
-	private static final int DAILY_KLT = 101;
 	private static final Logger log = LoggerFactory.getLogger(EastmoneyKlineClient.class);
 	private final EastmoneyRequestExecutor requestExecutor;
 	private final EastmoneyProperties properties;
@@ -27,31 +26,33 @@ public class EastmoneyKlineClient {
 		this.parser = parser;
 	}
 
-	public List<Candle> fetchDailyKlines(String secid, LocalDate beg, LocalDate end, int fqt) {
+	public List<Candle> fetchKlines(String secid, int klt, int fqt, String beg, String end, Integer limit) {
 		Assert.hasText(secid, "secid is required");
-		String url = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
+		UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(properties.getBaseUrl())
 				.path("/api/qt/stock/kline/get")
 				.queryParam("secid", secid)
-				.queryParam("beg", beg.format(DATE_FORMAT))
-				.queryParam("end", end.format(DATE_FORMAT))
-				.queryParam("klt", DAILY_KLT)
+				.queryParam("beg", beg)
+				.queryParam("end", end)
+				.queryParam("klt", klt)
 				.queryParam("fqt", fqt)
 				.queryParam("fields1", properties.getFields1())
 				.queryParam("fields2", properties.getFields2())
-				.queryParam("ut", properties.getUt())
-				.build()
-				.toUriString();
+				.queryParam("ut", properties.getUt());
+		if (limit != null) {
+			builder.queryParam("lmt", limit);
+		}
+		String url = builder.build().toUriString();
 		int maxRetries = properties.getRequest().getMaxRetries();
 		for (int attempt = 0; attempt <= maxRetries; attempt++) {
 			String response = requestExecutor.get(url, "kline secid=" + secid);
 			if (response == null || response.isBlank()) {
-				logErrorResponse(secid, beg, end, fqt, null, response);
+				logErrorResponse(secid, beg, end, klt, fqt, null, response);
 				throw new EastmoneyApiException("Empty response from Eastmoney kline API");
 			}
 			EastmoneyKlineResponse parsed = parser.parseResponse(response);
 			Integer rc = parsed == null ? null : parsed.rc();
 			if (parsed == null || parsed.data() == null || rc == null || rc != 0) {
-				logErrorResponse(secid, beg, end, fqt, rc, response);
+				logErrorResponse(secid, beg, end, klt, fqt, rc, response);
 				if (attempt < maxRetries) {
 					log.warn("Eastmoney kline rc retrying (attempt {}/{}), secid={}, rc={}",
 							attempt + 1, maxRetries, secid, rc);
@@ -65,9 +66,15 @@ public class EastmoneyKlineClient {
 		throw new EastmoneyApiException("Exceeded retries for Eastmoney kline API");
 	}
 
-	private void logErrorResponse(String secid, LocalDate beg, LocalDate end, int fqt, Integer rc, String response) {
+	public List<Candle> fetchKlines(String secid, int klt, int fqt, LocalDate beg, LocalDate end, Integer limit) {
+		String begValue = beg == null ? null : beg.format(DATE_FORMAT);
+		String endValue = end == null ? null : end.format(DATE_FORMAT);
+		return fetchKlines(secid, klt, fqt, begValue, endValue, limit);
+	}
+
+	private void logErrorResponse(String secid, String beg, String end, int klt, int fqt, Integer rc, String response) {
 		String snippet = response == null ? null : response.substring(0, Math.min(response.length(), 256));
 		log.error("Eastmoney kline error secid={}, beg={}, end={}, klt={}, fqt={}, rc={}, responseSnippet={}",
-				secid, beg, end, DAILY_KLT, fqt, rc, snippet);
+				secid, beg, end, klt, fqt, rc, snippet);
 	}
 }
