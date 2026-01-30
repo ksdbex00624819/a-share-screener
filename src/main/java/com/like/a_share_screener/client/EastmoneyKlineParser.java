@@ -19,20 +19,24 @@ public class EastmoneyKlineParser {
 		this.objectMapper = objectMapper;
 	}
 
-	public List<Candle> parse(String json) {
+	public EastmoneyKlineResponse parseResponse(String json) {
 		try {
-			EastmoneyKlineResponse response = objectMapper.readValue(json, EastmoneyKlineResponse.class);
-			if (response == null || response.data() == null || response.data().klines() == null) {
-				return Collections.emptyList();
-			}
-			List<Candle> candles = new ArrayList<>();
-			for (String line : response.data().klines()) {
-				candles.add(parseKlineLine(line));
-			}
-			return candles;
+			return objectMapper.readValue(json, EastmoneyKlineResponse.class);
 		} catch (JsonProcessingException e) {
 			throw new IllegalArgumentException("Failed to parse Eastmoney kline response", e);
 		}
+	}
+
+	public List<Candle> parse(String json) {
+		EastmoneyKlineResponse response = parseResponse(json);
+		if (response == null || response.data() == null || response.data().klines() == null) {
+			return Collections.emptyList();
+		}
+		List<Candle> candles = new ArrayList<>();
+		for (String line : response.data().klines()) {
+			candles.add(parseKlineLine(line));
+		}
+		return candles;
 	}
 
 	public Candle parseKlineLine(String line) {
