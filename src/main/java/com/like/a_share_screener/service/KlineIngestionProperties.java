@@ -11,7 +11,7 @@ public class KlineIngestionProperties {
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
 	private List<String> codes = new ArrayList<>();
 	private int fqt = 1;
-	private String defaultBeg = "19900101";
+	private String defaultBeg = "20260125";
 	private String cron = "0 30 15 * * MON-FRI";
 
 	public List<String> getCodes() {
