@@ -3,5 +3,5 @@ package com.like.a_share_screener.client.dto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record EastmoneyKlineResponse(Integer rc, EastmoneyKlineResponseData data) {
+public record EastmoneyStockListResponse(Integer rc, EastmoneyStockListData data) {
 }

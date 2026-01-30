@@ -2,25 +2,15 @@ package com.like.a_share_screener.service;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties(prefix = "kline-ingestion")
 public class KlineIngestionProperties {
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
-	private List<String> codes = new ArrayList<>();
 	private int fqt = 1;
 	private String defaultBeg = "19900101";
 	private String cron = "0 30 15 * * MON-FRI";
-
-	public List<String> getCodes() {
-		return codes;
-	}
-
-	public void setCodes(List<String> codes) {
-		this.codes = codes;
-	}
+	private int maxUniverseSize = 300;
 
 	public int getFqt() {
 		return fqt;
@@ -44,6 +34,14 @@ public class KlineIngestionProperties {
 
 	public void setCron(String cron) {
 		this.cron = cron;
+	}
+
+	public int getMaxUniverseSize() {
+		return maxUniverseSize;
+	}
+
+	public void setMaxUniverseSize(int maxUniverseSize) {
+		this.maxUniverseSize = maxUniverseSize;
 	}
 
 	public LocalDate parseDefaultBeg() {

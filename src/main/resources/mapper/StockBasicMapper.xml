@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.like.a_share_screener.persistence.mapper.StockBasicMapper">
+	<insert id="upsertBatch">
+		INSERT INTO stock_basic
+		(code, name, market, secid, board, status)
+		VALUES
+		<foreach collection="items" item="item" separator=",">
+			(#{item.code}, #{item.name}, #{item.market}, #{item.secid}, #{item.board}, #{item.status})
+		</foreach>
+		ON DUPLICATE KEY UPDATE
+			name = VALUES(name),
+			board = VALUES(board),
+			status = VALUES(status),
+			updated_at = CURRENT_TIMESTAMP
+	</insert>
+
+	<select id="selectExistingSecids" resultType="java.lang.String">
+		SELECT secid
+		FROM stock_basic
+		WHERE secid IN
+		<foreach collection="secids" item="secid" open="(" separator="," close=")">
+			#{secid}
+		</foreach>
+	</select>
+</mapper>
