@@ -29,30 +29,36 @@ public class KlineIngestionJob {
 		this.stockBasicService = stockBasicService;
 	}
 
-	@Scheduled(cron = "${kline-ingestion.cron:0 30 15 * * MON-FRI}", zone = "Asia/Shanghai")
-	public void ingestDaily() {
+	@Scheduled(cron = "${kline.ingestion.cron:0 30 15 * * MON-FRI}", zone = "Asia/Shanghai")
+	public void ingestKlines() {
 		LocalDate end = LocalDate.now(CHINA_ZONE);
-		LocalDate beg = properties.parseDefaultBeg();
 		List<StockBasicEntity> universe = stockBasicService.listMainBoardActive(properties.getMaxUniverseSize());
 		if (universe.isEmpty()) {
 			log.warn("Kline ingestion skipped: no MAIN ACTIVE stocks found");
 			return;
 		}
-		int successCount = 0;
-		List<String> failedSecids = new ArrayList<>();
-		for (StockBasicEntity stock : universe) {
-			String secid = stock.getSecid();
-			try {
-				ingestionService.ingestDaily(secid, properties.getFqt(), beg, end);
-				successCount++;
-			} catch (Exception ex) {
-				failedSecids.add(secid);
-				log.error("Kline ingestion failed for secid={}", secid, ex);
+		for (String timeframe : properties.getEnabledTimeframes()) {
+			int klt = properties.resolveKlt(timeframe);
+			int successCount = 0;
+			int totalBars = 0;
+			List<String> failedSecids = new ArrayList<>();
+			for (StockBasicEntity stock : universe) {
+				String secid = stock.getSecid();
+				try {
+					int upserted = ingestionService.ingest(secid, timeframe, klt, properties.getFqt(),
+							properties.getDefaultBeg(), properties.getDefaultEnd(), end, properties.getRecentLimit());
+					totalBars += upserted;
+					successCount++;
+				} catch (Exception ex) {
+					failedSecids.add(secid);
+					log.error("Kline ingestion failed for secid={}, timeframe={}", secid, timeframe, ex);
+				}
 			}
+			int failCount = failedSecids.size();
+			String failList = failedSecids.stream().limit(20).collect(Collectors.joining(","));
+			log.info("Kline ingestion summary: timeframe={}, totalCodes={}, success={}, fail={}, barsUpserted={}, "
+							+ "failSecids={}",
+					timeframe, universe.size(), successCount, failCount, totalBars, failList);
 		}
-		int failCount = failedSecids.size();
-		String failList = failedSecids.stream().limit(20).collect(Collectors.joining(","));
-		log.info("Kline ingestion summary: total={}, success={}, fail={}, failSecids={}",
-				universe.size(), successCount, failCount, failList);
 	}
 }

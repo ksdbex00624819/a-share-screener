@@ -23,13 +23,27 @@ eastmoney:
     max-retries: 2
     backoff-ms: 300
 
-kline-ingestion:
-  fqt: 1
-  default-beg: 20100101
-  cron: "0 30 15 * * MON-FRI"
-  max-universe-size: 300
+kline:
+  ingestion:
+    enabled-timeframes: ["1d"]
+    klt-mapping:
+      1d: 101
+      1w: 102
+      60m: 60
+    fqt: 1
+    default-beg: "0"
+    default-end: "20500101"
+    recent-limit: 3000
+    cron: "0 30 15 * * MON-FRI"
+    max-universe-size: 300
 
-factor-computation:
-  seed-bars: 300
-  cron: "0 0 16 * * MON-FRI"
-  max-universe-size: 300
+factor:
+  compute:
+    enabled-timeframes: ["1d"]
+    seed-bars-by-timeframe:
+      1d: 300
+      1w: 200
+      60m: 500
+    fqt: 1
+    cron: "0 0 16 * * MON-FRI"
+    max-universe-size: 300

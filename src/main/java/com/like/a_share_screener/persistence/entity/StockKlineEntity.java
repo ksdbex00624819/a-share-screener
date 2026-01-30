@@ -5,19 +5,16 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * @deprecated Use {@link StockKlineEntity} for multi-timeframe storage.
- */
-@Deprecated
-@TableName("stock_kline_daily")
-public class StockKlineDailyEntity {
+@TableName("stock_kline")
+public class StockKlineEntity {
 	@TableId(type = IdType.AUTO)
 	private Long id;
 	private String code;
-	private LocalDate tradeDate;
+	private String timeframe;
+	private LocalDateTime barTime;
+	private Integer fqt;
 	private BigDecimal open;
 	private BigDecimal high;
 	private BigDecimal low;
@@ -28,7 +25,6 @@ public class StockKlineDailyEntity {
 	private BigDecimal changePct;
 	private BigDecimal changeAmt;
 	private BigDecimal turnoverPct;
-	private Integer fqt;
 	@TableField("created_at")
 	private LocalDateTime createdAt;
 	@TableField("updated_at")
@@ -50,12 +46,28 @@ public class StockKlineDailyEntity {
 		this.code = code;
 	}
 
-	public LocalDate getTradeDate() {
-		return tradeDate;
+	public String getTimeframe() {
+		return timeframe;
 	}
 
-	public void setTradeDate(LocalDate tradeDate) {
-		this.tradeDate = tradeDate;
+	public void setTimeframe(String timeframe) {
+		this.timeframe = timeframe;
+	}
+
+	public LocalDateTime getBarTime() {
+		return barTime;
+	}
+
+	public void setBarTime(LocalDateTime barTime) {
+		this.barTime = barTime;
+	}
+
+	public Integer getFqt() {
+		return fqt;
+	}
+
+	public void setFqt(Integer fqt) {
+		this.fqt = fqt;
 	}
 
 	public BigDecimal getOpen() {
@@ -136,14 +148,6 @@ public class StockKlineDailyEntity {
 
 	public void setTurnoverPct(BigDecimal turnoverPct) {
 		this.turnoverPct = turnoverPct;
-	}
-
-	public Integer getFqt() {
-		return fqt;
-	}
-
-	public void setFqt(Integer fqt) {
-		this.fqt = fqt;
 	}
 
 	public LocalDateTime getCreatedAt() {

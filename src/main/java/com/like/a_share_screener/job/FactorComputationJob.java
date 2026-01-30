@@ -26,32 +26,35 @@ public class FactorComputationJob {
 		this.stockBasicService = stockBasicService;
 	}
 
-	@Scheduled(cron = "${factor-computation.cron:0 0 16 * * MON-FRI}", zone = "Asia/Shanghai")
-	public void computeDailyFactors() {
+	@Scheduled(cron = "${factor.compute.cron:0 0 16 * * MON-FRI}", zone = "Asia/Shanghai")
+	public void computeFactors() {
 		List<StockBasicEntity> universe = stockBasicService.listMainBoardActive(properties.getMaxUniverseSize());
 		if (universe.isEmpty()) {
 			log.warn("Factor computation skipped: no MAIN ACTIVE stocks found");
 			return;
 		}
-		int computedRows = 0;
-		int skippedCodes = 0;
-		List<String> failedCodes = new ArrayList<>();
-		for (StockBasicEntity stock : universe) {
-			String code = stock.getSecid();
-			try {
-				int computedForCode = computeService.computeFactorsForCode(code);
-				if (computedForCode == 0) {
-					skippedCodes++;
-				} else {
-					computedRows += computedForCode;
+		for (String timeframe : properties.getEnabledTimeframes()) {
+			int computedRows = 0;
+			int skippedCodes = 0;
+			List<String> failedCodes = new ArrayList<>();
+			for (StockBasicEntity stock : universe) {
+				String code = stock.getSecid();
+				try {
+					int computedForCode = computeService.computeFactorsForCode(code, timeframe);
+					if (computedForCode == 0) {
+						skippedCodes++;
+					} else {
+						computedRows += computedForCode;
+					}
+				} catch (Exception ex) {
+					failedCodes.add(code);
+					log.error("Factor computation failed for code={}, timeframe={}", code, timeframe, ex);
 				}
-			} catch (Exception ex) {
-				failedCodes.add(code);
-				log.error("Factor computation failed for code={}", code, ex);
 			}
+			String failList = failedCodes.stream().limit(20).collect(Collectors.joining(","));
+			log.info("Factor computation summary: timeframe={}, totalCodes={}, computedRows={}, skippedCodes={}, "
+							+ "failCount={}, failCodes={}",
+					timeframe, universe.size(), computedRows, skippedCodes, failedCodes.size(), failList);
 		}
-		String failList = failedCodes.stream().limit(20).collect(Collectors.joining(","));
-		log.info("Factor computation summary: totalCodes={}, computedRows={}, skippedCodes={}, failCount={}, failCodes={}",
-				universe.size(), computedRows, skippedCodes, failedCodes.size(), failList);
 	}
 }

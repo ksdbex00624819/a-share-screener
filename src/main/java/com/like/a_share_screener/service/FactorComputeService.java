@@ -1,12 +1,11 @@
 package com.like.a_share_screener.service;
 
-import com.like.a_share_screener.persistence.entity.StockFactorDailyEntity;
-import com.like.a_share_screener.persistence.entity.StockKlineDailyEntity;
-import com.like.a_share_screener.persistence.mapper.StockFactorDailyMapper;
-import com.like.a_share_screener.persistence.mapper.StockKlineDailyMapper;
+import com.like.a_share_screener.domain.FactorRow;
+import com.like.a_share_screener.persistence.entity.StockKlineEntity;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -16,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Bar;
-import org.ta4j.core.BarBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -33,36 +32,37 @@ import org.ta4j.core.num.Num;
 @Service
 public class FactorComputeService {
 	private static final ZoneId CHINA_ZONE = ZoneId.of("Asia/Shanghai");
-	private final StockKlineDailyMapper klineMapper;
-	private final StockFactorDailyMapper factorMapper;
+	private final StockKlineService klineService;
+	private final StockFactorService factorService;
 	private final FactorComputationProperties properties;
 
-	public FactorComputeService(StockKlineDailyMapper klineMapper, StockFactorDailyMapper factorMapper,
+	public FactorComputeService(StockKlineService klineService, StockFactorService factorService,
 			FactorComputationProperties properties) {
-		this.klineMapper = klineMapper;
-		this.factorMapper = factorMapper;
+		this.klineService = klineService;
+		this.factorService = factorService;
 		this.properties = properties;
 	}
 
-	public int computeFactorsForCode(String code) {
-		return computeFactorsForCode(code, false);
+	public int computeFactorsForCode(String code, String timeframe) {
+		return computeFactorsForCode(code, timeframe, false);
 	}
 
-	int computeFactorsForCode(String code, boolean recomputeLatest) {
-		LocalDate maxDate = factorMapper.selectLatestTradeDate(code);
-		LocalDate effectiveMaxDate = maxDate;
-		if (recomputeLatest && maxDate != null) {
-			effectiveMaxDate = maxDate.minusDays(1);
+	int computeFactorsForCode(String code, String timeframe, boolean recomputeLatest) {
+		LocalDateTime maxTime = factorService.getLatestBarTime(code, timeframe, properties.getFqt()).orElse(null);
+		LocalDateTime effectiveMaxTime = maxTime;
+		if (recomputeLatest && maxTime != null) {
+			effectiveMaxTime = maxTime.minusSeconds(1);
 		}
-		int seedBars = Math.max(1, properties.getSeedBars());
-		List<StockKlineDailyEntity> bars = klineMapper.selectRecentByCode(code, seedBars);
+		int seedBars = Math.max(1, properties.resolveSeedBars(timeframe));
+		List<StockKlineEntity> bars = klineService.listBars(code, timeframe, properties.getFqt(), null, null,
+				seedBars, false);
 		if (bars.isEmpty()) {
 			return 0;
 		}
 		Collections.reverse(bars);
-		BarSeries series = new BaseBarSeriesBuilder().withName(code).build();
-		for (StockKlineDailyEntity bar : bars) {
-			series.addBar(toBar(series, bar));
+		BarSeries series = new BaseBarSeriesBuilder().withName(code + "-" + timeframe).build();
+		for (StockKlineEntity bar : bars) {
+			series.addBar(toBar(series, bar, timeframe));
 		}
 		ClosePriceIndicator close = new ClosePriceIndicator(series);
 		SMAIndicator sma5 = new SMAIndicator(close, 5);
@@ -85,11 +85,18 @@ public class FactorComputeService {
 		StochasticOscillatorKIndicator stochK = new StochasticOscillatorKIndicator(series, 9);
 		SMAIndicator kdjK = new SMAIndicator(stochK, 3);
 		SMAIndicator kdjD = new SMAIndicator(kdjK, 3);
-		List<StockFactorDailyEntity> toUpsert = new ArrayList<>();
+		BarVolumeIndicator volumeIndicator = new BarVolumeIndicator(series);
+		BarAmountIndicator amountIndicator = new BarAmountIndicator(series);
+		SMAIndicator volMa5 = new SMAIndicator(volumeIndicator, 5);
+		SMAIndicator volMa10 = new SMAIndicator(volumeIndicator, 10);
+		SMAIndicator volMa20 = new SMAIndicator(volumeIndicator, 20);
+		SMAIndicator volMa60 = new SMAIndicator(volumeIndicator, 60);
+		SMAIndicator amtMa20 = new SMAIndicator(amountIndicator, 20);
+		List<FactorRow> toUpsert = new ArrayList<>();
 		for (int i = 0; i < bars.size(); i++) {
-			StockKlineDailyEntity kline = bars.get(i);
-			LocalDate tradeDate = kline.getTradeDate();
-			if (effectiveMaxDate != null && !tradeDate.isAfter(effectiveMaxDate)) {
+			StockKlineEntity kline = bars.get(i);
+			LocalDateTime barTime = kline.getBarTime();
+			if (effectiveMaxTime != null && !barTime.isAfter(effectiveMaxTime)) {
 				continue;
 			}
 			Num macdValue = macd.getValue(i);
@@ -97,41 +104,50 @@ public class FactorComputeService {
 			boolean macdStable = isStable(i, macd) && isStable(i, macdSignal);
 			boolean kdjStable = isStable(i, kdjK) && isStable(i, kdjD);
 			Num kdjJ = computeKdjJ(kdjK.getValue(i), kdjD.getValue(i), series);
-			StockFactorDailyEntity factor = new StockFactorDailyEntity();
-			factor.setCode(code);
-			factor.setTradeDate(tradeDate);
-			factor.setMa5(toDecimal(sma5, i));
-			factor.setMa10(toDecimal(sma10, i));
-			factor.setMa20(toDecimal(sma20, i));
-			factor.setMa60(toDecimal(sma60, i));
-			factor.setEma5(toDecimal(ema5, i));
-			factor.setEma10(toDecimal(ema10, i));
-			factor.setEma20(toDecimal(ema20, i));
-			factor.setEma60(toDecimal(ema60, i));
-			factor.setRsi14(toDecimal(rsi14, i));
-			factor.setMacd(toDecimal(macd, i));
-			factor.setMacdSignal(toDecimal(macdSignal, i));
-			factor.setMacdHist(toDecimal(subtract(macdValue, macdSignalValue), macdStable));
-			factor.setBollMid(toDecimal(bollMid, i));
-			factor.setBollUp(toDecimal(bollUp, i));
-			factor.setBollLow(toDecimal(bollLow, i));
-			factor.setKdjK(toDecimal(kdjK, i));
-			factor.setKdjD(toDecimal(kdjD, i));
-			factor.setKdjJ(toDecimal(kdjJ, kdjStable));
+			BigDecimal volMa20Value = toDecimal(volMa20, i);
+			BigDecimal volRatio20 = computeVolRatio(kline.getVolume(), volMa20Value);
+			FactorRow factor = new FactorRow(
+					barTime,
+					toDecimal(sma5, i),
+					toDecimal(sma10, i),
+					toDecimal(sma20, i),
+					toDecimal(sma60, i),
+					toDecimal(ema5, i),
+					toDecimal(ema10, i),
+					toDecimal(ema20, i),
+					toDecimal(ema60, i),
+					toDecimal(rsi14, i),
+					toDecimal(macd, i),
+					toDecimal(macdSignal, i),
+					toDecimal(subtract(macdValue, macdSignalValue), macdStable),
+					toDecimal(bollMid, i),
+					toDecimal(bollUp, i),
+					toDecimal(bollLow, i),
+					toDecimal(kdjK, i),
+					toDecimal(kdjD, i),
+					toDecimal(kdjJ, kdjStable),
+					toDecimal(volMa5, i),
+					toDecimal(volMa10, i),
+					volMa20Value,
+					toDecimal(volMa60, i),
+					toDecimal(amtMa20, i),
+					volRatio20
+			);
 			toUpsert.add(factor);
 		}
 		if (toUpsert.isEmpty()) {
 			return 0;
 		}
-		factorMapper.upsertBatch(toUpsert);
+		factorService.upsertBatch(code, timeframe, properties.getFqt(), toUpsert);
 		return toUpsert.size();
 	}
 
-	private Bar toBar(BarSeries series, StockKlineDailyEntity bar) {
-		ZonedDateTime endTime = bar.getTradeDate().atStartOfDay(CHINA_ZONE);
-		BarBuilder builder = series.barBuilder()
-				.timePeriod(Duration.ofDays(1))
-				.beginTime(endTime.minusDays(1).toInstant())
+	private Bar toBar(BarSeries series, StockKlineEntity bar, String timeframe) {
+		ZonedDateTime endTime = bar.getBarTime().atZone(CHINA_ZONE);
+		Duration duration = resolveDuration(timeframe);
+		return series.barBuilder()
+				.timePeriod(duration)
+				.beginTime(endTime.minus(duration).toInstant())
 				.endTime(endTime.toInstant())
 				.openPrice(defaultNumber(bar.getOpen()))
 				.highPrice(defaultNumber(bar.getHigh()))
@@ -139,8 +155,8 @@ public class FactorComputeService {
 				.closePrice(defaultNumber(bar.getClose()))
 				.volume(defaultNumber(bar.getVolume()))
 				.amount(defaultNumber(bar.getAmount()))
-				.trades(0);
-		return builder.build();
+				.trades(0)
+				.build();
 	}
 
 	private Number defaultNumber(BigDecimal value) {
@@ -190,5 +206,66 @@ public class FactorComputeService {
 		Num three = series.numFactory().three();
 		Num two = series.numFactory().two();
 		return k.multipliedBy(three).minus(d.multipliedBy(two));
+	}
+
+	private Duration resolveDuration(String timeframe) {
+		if (timeframe.endsWith("m")) {
+			int minutes = Integer.parseInt(timeframe.substring(0, timeframe.length() - 1));
+			return Duration.ofMinutes(minutes);
+		}
+		if (timeframe.endsWith("w")) {
+			int weeks = Integer.parseInt(timeframe.substring(0, timeframe.length() - 1));
+			return Duration.ofDays(weeks * 7L);
+		}
+		if (timeframe.endsWith("d")) {
+			int days = Integer.parseInt(timeframe.substring(0, timeframe.length() - 1));
+			return Duration.ofDays(days);
+		}
+		return Duration.ofDays(1);
+	}
+
+	private BigDecimal computeVolRatio(Long volume, BigDecimal volMa20) {
+		if (volume == null || volMa20 == null || volMa20.compareTo(BigDecimal.ZERO) == 0) {
+			return null;
+		}
+		return BigDecimal.valueOf(volume).divide(volMa20, 8, RoundingMode.HALF_UP);
+	}
+
+	private static class BarVolumeIndicator extends AbstractIndicator<Num> {
+		private final BarSeries series;
+
+		BarVolumeIndicator(BarSeries series) {
+			super(series);
+			this.series = series;
+		}
+
+		@Override
+		public Num getValue(int index) {
+			return series.getBar(index).getVolume();
+		}
+
+		@Override
+		public int getCountOfUnstableBars() {
+			return 0;
+		}
+	}
+
+	private static class BarAmountIndicator extends AbstractIndicator<Num> {
+		private final BarSeries series;
+
+		BarAmountIndicator(BarSeries series) {
+			super(series);
+			this.series = series;
+		}
+
+		@Override
+		public Num getValue(int index) {
+			return series.getBar(index).getAmount();
+		}
+
+		@Override
+		public int getCountOfUnstableBars() {
+			return 0;
+		}
 	}
 }

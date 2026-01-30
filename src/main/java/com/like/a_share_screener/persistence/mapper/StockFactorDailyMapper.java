@@ -6,6 +6,10 @@ import java.time.LocalDate;
 import java.util.List;
 import org.apache.ibatis.annotations.Param;
 
+/**
+ * @deprecated Use {@link StockFactorMapper} for multi-timeframe storage.
+ */
+@Deprecated
 public interface StockFactorDailyMapper extends BaseMapper<StockFactorDailyEntity> {
 	LocalDate selectLatestTradeDate(@Param("code") String code);
 

@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS stock_kline (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(12) NOT NULL,
+  timeframe VARCHAR(8) NOT NULL,
+  bar_time DATETIME NOT NULL,
+  fqt INT NOT NULL DEFAULT 1,
+  open DECIMAL(18,8),
+  high DECIMAL(18,8),
+  low  DECIMAL(18,8),
+  close DECIMAL(18,8),
+  volume BIGINT,
+  amount DECIMAL(20,2),
+  amplitude_pct DECIMAL(10,4),
+  change_pct DECIMAL(10,4),
+  change_amt DECIMAL(18,8),
+  turnover_pct DECIMAL(10,4),
+  created_at DATETIME,
+  updated_at DATETIME,
+  UNIQUE KEY uk_kline (code, timeframe, bar_time, fqt),
+  INDEX idx_code_tf_time (code, timeframe, bar_time)
+);
