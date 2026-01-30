@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS stock_kline_daily (
   turnover_pct DECIMAL(10,4),
   fqt INT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (code, trade_date)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_stock_kline_daily_code_date (code, trade_date)
 );
