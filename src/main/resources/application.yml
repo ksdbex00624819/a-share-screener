@@ -28,3 +28,8 @@ kline-ingestion:
   default-beg: 20100101
   cron: "0 30 15 * * MON-FRI"
   max-universe-size: 300
+
+factor-computation:
+  seed-bars: 300
+  cron: "0 0 16 * * MON-FRI"
+  max-universe-size: 300

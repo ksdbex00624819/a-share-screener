@@ -37,3 +37,27 @@ kline-ingestion:
 
 The scheduled job is enabled by default and will ingest klines for the MAIN board universe stored in
 `stock_basic`.
+
+## Daily Factor Computation (PR3)
+
+The factor computation job reads recent `stock_kline_daily` bars, computes common technical
+indicators, and upserts results into `stock_factor_daily`. Warmup values are stored as `NULL`
+until enough history is available (no NaN/Infinity stored).
+
+Indicators and default parameters:
+
+- SMA: 5, 10, 20, 60
+- EMA: 5, 10, 20, 60
+- RSI: 14
+- MACD: 12, 26, 9 (macd = EMA(12) - EMA(26), signal = EMA(macd, 9), hist = macd - signal)
+- Bollinger Bands: 20, 2 (middle = SMA(20), up/low = mid ± 2 * stddev(20))
+- KDJ: 9, 3, 3 (K = SMA(%K, 3), D = SMA(K, 3), J = 3*K - 2*D)
+
+Configure the job and seed history size in `application.yml`:
+
+```yaml
+factor-computation:
+  seed-bars: 300
+  cron: "0 0 16 * * MON-FRI"
+  max-universe-size: 300
+```

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+		PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+		"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.like.a_share_screener.persistence.mapper.StockFactorDailyMapper">
+	<select id="selectLatestTradeDate" resultType="java.time.LocalDate">
+		SELECT MAX(trade_date)
+		FROM stock_factor_daily
+		WHERE code = #{code}
+	</select>
+
+	<insert id="upsertBatch">
+		INSERT INTO stock_factor_daily
+		(code, trade_date, ma5, ma10, ma20, ma60, ema5, ema10, ema20, ema60, rsi14,
+		macd, macd_signal, macd_hist, boll_mid, boll_up, boll_low, kdj_k, kdj_d, kdj_j)
+		VALUES
+		<foreach collection="items" item="item" separator=",">
+			(#{item.code}, #{item.tradeDate}, #{item.ma5}, #{item.ma10}, #{item.ma20}, #{item.ma60},
+			#{item.ema5}, #{item.ema10}, #{item.ema20}, #{item.ema60}, #{item.rsi14},
+			#{item.macd}, #{item.macdSignal}, #{item.macdHist}, #{item.bollMid}, #{item.bollUp},
+			#{item.bollLow}, #{item.kdjK}, #{item.kdjD}, #{item.kdjJ})
+		</foreach>
+		ON DUPLICATE KEY UPDATE
+			ma5 = VALUES(ma5),
+			ma10 = VALUES(ma10),
+			ma20 = VALUES(ma20),
+			ma60 = VALUES(ma60),
+			ema5 = VALUES(ema5),
+			ema10 = VALUES(ema10),
+			ema20 = VALUES(ema20),
+			ema60 = VALUES(ema60),
+			rsi14 = VALUES(rsi14),
+			macd = VALUES(macd),
+			macd_signal = VALUES(macd_signal),
+			macd_hist = VALUES(macd_hist),
+			boll_mid = VALUES(boll_mid),
+			boll_up = VALUES(boll_up),
+			boll_low = VALUES(boll_low),
+			kdj_k = VALUES(kdj_k),
+			kdj_d = VALUES(kdj_d),
+			kdj_j = VALUES(kdj_j),
+			updated_at = CURRENT_TIMESTAMP
+	</insert>
+</mapper>
