@@ -8,3 +8,9 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+  task:
+    scheduling:
+      enabled: false
+
+factor-computation:
+  seed-bars: 50
