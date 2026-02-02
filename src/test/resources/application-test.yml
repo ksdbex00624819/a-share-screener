@@ -8,9 +8,26 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+      data-locations: classpath:data-test.sql
   task:
     scheduling:
       enabled: false
 
-factor-computation:
-  seed-bars: 50
+kline:
+  ingestion:
+    enabled-timeframes: ["1d"]
+    klt-mapping:
+      1d: 101
+    fqt: 1
+    default-beg: "20240101"
+    default-end: "20500101"
+    recent-limit: 120
+    max-universe-size: 300
+
+factor:
+  compute:
+    enabled-timeframes: ["1d"]
+    seed-bars-by-timeframe:
+      1d: 300
+    fqt: 1
+    max-universe-size: 300
