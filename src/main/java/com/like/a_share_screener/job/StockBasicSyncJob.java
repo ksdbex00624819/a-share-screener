@@ -28,16 +28,25 @@ public class StockBasicSyncJob {
 
 	@Scheduled(cron = "${stock-basic-sync.cron:0 10 15 * * MON-FRI}", zone = "Asia/Shanghai")
 	public void syncStockBasics() {
+		runOnce();
+	}
+
+	public JobRunResult runOnce() {
 		Instant start = Instant.now();
 		try {
 			List<EastmoneyStockListItem> items = stockListClient.fetchAllStocks();
 			List<StockBasicEntity> entities = mapToEntities(items);
 			StockBasicService.UpsertResult result = stockBasicService.upsertStocks(entities);
-			Duration duration = Duration.between(start, Instant.now());
+			Instant finishedAt = Instant.now();
+			Duration duration = Duration.between(start, finishedAt);
 			log.info("StockBasicSyncJob completed: fetched={}, inserted={}, updated={}, durationMs={}",
 					items.size(), result.inserted(), result.updated(), duration.toMillis());
+			return JobRunResult.success(start, finishedAt, items.size(),
+					result.inserted() + result.updated(), null);
 		} catch (Exception ex) {
+			Instant finishedAt = Instant.now();
 			log.error("StockBasicSyncJob failed", ex);
+			return JobRunResult.failure(start, finishedAt, ex.getMessage());
 		}
 	}
 
