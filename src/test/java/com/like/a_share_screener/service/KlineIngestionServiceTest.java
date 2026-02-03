@@ -47,28 +47,29 @@ class KlineIngestionServiceTest {
 	void ingestDailyUsesLatestTradeDateAndUpserts() {
 		LocalDate end = LocalDate.of(2024, 1, 3);
 
-		Mockito.when(client.fetchKlines("1.000001", 101, 1, "0", "20240103", null))
+		Mockito.when(client.fetchKlines("000001", "1.000001", "1d", 101, 1, "0", "20240103", null))
 				.thenReturn(List.of(
 						candle(LocalDate.of(2024, 1, 2)),
 						candle(LocalDate.of(2024, 1, 3))
 				));
 
-		int inserted = ingestionService.ingest("1.000001", "1d", 101, 1, "0", "20500101", end, 120);
-		Assertions.assertThat(inserted).isEqualTo(2);
+		KlineIngestionResult inserted = ingestionService.ingest("000001", "1.000001", "1d", 101, 1, "0",
+				"20500101", end, 120);
+		Assertions.assertThat(inserted.upserted()).isEqualTo(2);
 		Assertions.assertThat(mapper.selectLatestBarTime("1.000001", "1d", 1))
 				.isEqualTo(LocalDateTime.of(2024, 1, 3, 15, 0));
 
-		Mockito.when(client.fetchKlines("1.000001", 101, 1, "20240104", "20240104", null))
+		Mockito.when(client.fetchKlines("000001", "1.000001", "1d", 101, 1, "20240104", "20240104", null))
 				.thenReturn(List.of(candle(LocalDate.of(2024, 1, 4))));
 
-		int nextInsert = ingestionService.ingest("1.000001", "1d", 101, 1, "0", "20500101",
-				LocalDate.of(2024, 1, 4), 120);
-		Assertions.assertThat(nextInsert).isEqualTo(1);
+		KlineIngestionResult nextInsert = ingestionService.ingest("000001", "1.000001", "1d", 101, 1, "0",
+				"20500101", LocalDate.of(2024, 1, 4), 120);
+		Assertions.assertThat(nextInsert.upserted()).isEqualTo(1);
 		Assertions.assertThat(mapper.selectLatestBarTime("1.000001", "1d", 1))
 				.isEqualTo(LocalDateTime.of(2024, 1, 4, 15, 0));
 
-		Mockito.verify(client).fetchKlines("1.000001", 101, 1, "0", "20240103", null);
-		Mockito.verify(client).fetchKlines("1.000001", 101, 1, "20240104", "20240104", null);
+		Mockito.verify(client).fetchKlines("000001", "1.000001", "1d", 101, 1, "0", "20240103", null);
+		Mockito.verify(client).fetchKlines("000001", "1.000001", "1d", 101, 1, "20240104", "20240104", null);
 	}
 
 	@Test
@@ -79,11 +80,12 @@ class KlineIngestionServiceTest {
 				parser.parseKlineLine("2026-02-02 11:30,10,10,10,9,110,1100,1,1,0.1,0.1"),
 				parser.parseKlineLine("2026-02-02 14:00,10,10,10,9,120,1200,1,1,0.1,0.1")
 		);
-		Mockito.when(client.fetchKlines("1.000001", 60, 1, "20240101", "20500101", 120))
+		Mockito.when(client.fetchKlines("000001", "1.000001", "60m", 60, 1, "20240101", "20500101", 120))
 				.thenReturn(candles);
 
-		int inserted = ingestionService.ingest("1.000001", "60m", 60, 1, "20240101", "20500101", null, 120);
-		Assertions.assertThat(inserted).isEqualTo(3);
+		KlineIngestionResult inserted = ingestionService.ingest("000001", "1.000001", "60m", 60, 1, "20240101",
+				"20500101", null, 120);
+		Assertions.assertThat(inserted.upserted()).isEqualTo(3);
 
 		List<StockKlineEntity> stored = mapper.selectList(null).stream()
 				.filter(entity -> "60m".equals(entity.getTimeframe()))
@@ -102,15 +104,15 @@ class KlineIngestionServiceTest {
 	@Test
 	void ingestWeeklySetsCloseTime() {
 		EastmoneyKlineParser parser = new EastmoneyKlineParser(new ObjectMapper());
-		Mockito.when(client.fetchKlines("1.000001", 102, 1, "0", "20240131", null))
+		Mockito.when(client.fetchKlines("000001", "1.000001", "1w", 102, 1, "0", "20240131", null))
 				.thenReturn(List.of(
 						parser.parseKlineLine("2024-01-19,10,10,10,9,100,1000,1,1,0.1,0.1"),
 						parser.parseKlineLine("2024-01-26,10,10,10,9,100,1000,1,1,0.1,0.1")
 				));
 
-		int inserted = ingestionService.ingest("1.000001", "1w", 102, 1, "0", "20500101",
-				LocalDate.of(2024, 1, 31), 120);
-		Assertions.assertThat(inserted).isEqualTo(2);
+		KlineIngestionResult inserted = ingestionService.ingest("000001", "1.000001", "1w", 102, 1, "0",
+				"20500101", LocalDate.of(2024, 1, 31), 120);
+		Assertions.assertThat(inserted.upserted()).isEqualTo(2);
 		Assertions.assertThat(mapper.selectLatestBarTime("1.000001", "1w", 1))
 				.isEqualTo(LocalDateTime.of(2024, 1, 26, 15, 0));
 	}

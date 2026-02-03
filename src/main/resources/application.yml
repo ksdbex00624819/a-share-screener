@@ -19,9 +19,18 @@ eastmoney:
   clist-fs: m:0+t:6,m:0+t:13,m:1+t:2,m:1+t:23
   clist-page-size: 200
   request:
+    timeout-ms: 8000
     min-interval-ms: 200
+    jitter-ms: 150
     max-retries: 2
     backoff-ms: 300
+    backoff-base-ms: 500
+    backoff-max-ms: 4000
+    retry-rc-codes: [102]
+    log-success: true
+    log-success-every-n: 50
+    log-progress-every-n: 50
+    log-failure-detail: true
 
 kline:
   ingestion:

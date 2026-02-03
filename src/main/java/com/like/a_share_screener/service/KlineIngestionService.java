@@ -30,7 +30,8 @@ public class KlineIngestionService {
 		this.properties = properties;
 	}
 
-	public int ingest(String secid, String timeframe, int klt, int fqt, String defaultBeg, String defaultEnd,
+	public KlineIngestionResult ingest(String code, String secid, String timeframe, int klt, int fqt,
+			String defaultBeg, String defaultEnd,
 			LocalDate endDate, int recentLimit) {
 		LocalDateTime latest = klineService.getLatestBarTime(secid, timeframe, fqt).orElse(null);
 		boolean dailyOrWeekly = "1d".equals(timeframe) || "1w".equals(timeframe);
@@ -41,7 +42,7 @@ public class KlineIngestionService {
 			if (latest != null) {
 				LocalDate nextDate = latest.toLocalDate().plusDays(1);
 				if (nextDate.isAfter(effectiveEnd)) {
-					return 0;
+					return new KlineIngestionResult(0, 0, null, null);
 				}
 				beg = nextDate.format(DATE_FORMAT);
 				end = effectiveEnd.format(DATE_FORMAT);
@@ -49,10 +50,14 @@ public class KlineIngestionService {
 				end = effectiveEnd.format(DATE_FORMAT);
 			}
 		}
-		List<Candle> candles = client.fetchKlines(secid, klt, fqt, beg, end, dailyOrWeekly ? null : recentLimit);
+		List<Candle> candles = client.fetchKlines(code, secid, timeframe, klt, fqt, beg, end,
+				dailyOrWeekly ? null : recentLimit);
 		if (candles.isEmpty()) {
-			return 0;
+			return new KlineIngestionResult(0, 0, null, null);
 		}
+		int fetchedBars = candles.size();
+		LocalDateTime firstBarTime = candles.stream().map(Candle::barTime).min(LocalDateTime::compareTo).orElse(null);
+		LocalDateTime lastBarTime = candles.stream().map(Candle::barTime).max(LocalDateTime::compareTo).orElse(null);
 		List<Candle> normalized = candles.stream()
 				.map(candle -> normalizeTimeframe(candle, timeframe, secid))
 				.flatMap(Optional::stream)
@@ -63,7 +68,7 @@ public class KlineIngestionService {
 		if (upserted > 0 && retainBars > 0) {
 			klineService.pruneOldBars(secid, timeframe, fqt, retainBars);
 		}
-		return upserted;
+		return new KlineIngestionResult(upserted, fetchedBars, firstBarTime, lastBarTime);
 	}
 
 	private Optional<Candle> normalizeTimeframe(Candle candle, String timeframe, String secid) {
