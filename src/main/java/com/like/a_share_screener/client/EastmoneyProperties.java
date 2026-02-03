@@ -14,7 +14,6 @@ public class EastmoneyProperties {
 	private String clistFields;
 	private String clistFs;
 	private Integer clistPageSize = 200;
-	private Request request = new Request();
 
 	public String getBaseUrl() {
 		return baseUrl;
@@ -96,41 +95,4 @@ public class EastmoneyProperties {
 		this.clistPageSize = clistPageSize;
 	}
 
-	public Request getRequest() {
-		return request;
-	}
-
-	public void setRequest(Request request) {
-		this.request = request;
-	}
-
-	public static class Request {
-		private long minIntervalMs = 200;
-		private int maxRetries = 2;
-		private long backoffMs = 300;
-
-		public long getMinIntervalMs() {
-			return minIntervalMs;
-		}
-
-		public void setMinIntervalMs(long minIntervalMs) {
-			this.minIntervalMs = minIntervalMs;
-		}
-
-		public int getMaxRetries() {
-			return maxRetries;
-		}
-
-		public void setMaxRetries(int maxRetries) {
-			this.maxRetries = maxRetries;
-		}
-
-		public long getBackoffMs() {
-			return backoffMs;
-		}
-
-		public void setBackoffMs(long backoffMs) {
-			this.backoffMs = backoffMs;
-		}
-	}
 }
