@@ -11,16 +11,34 @@
 		  AND fqt = #{fqt}
 	</select>
 
+	<select id="selectNthNewestBarTime" resultType="java.time.LocalDateTime">
+		SELECT bar_time
+		FROM stock_factor
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+		ORDER BY bar_time DESC
+		LIMIT 1 OFFSET #{offset}
+	</select>
+
+	<delete id="deleteOlderThan">
+		DELETE FROM stock_factor
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+		  AND bar_time &lt; #{cutoff}
+	</delete>
+
 	<insert id="upsertBatch">
 		INSERT INTO stock_factor
-		(code, timeframe, bar_time, fqt, ma5, ma10, ma20, ma60, ema5, ema10, ema20, ema60, rsi14,
+		(code, timeframe, bar_time, fqt, ma5, ma10, ma20, ma60, ema5, ema10, ema20, ema60, rsi14, atr14,
 		macd, macd_signal, macd_hist, boll_mid, boll_up, boll_low, kdj_k, kdj_d, kdj_j, vol_ma5, vol_ma10,
 		vol_ma20, vol_ma60, amt_ma20, vol_ratio20)
 		VALUES
 		<foreach collection="items" item="item" separator=",">
 			(#{item.code}, #{item.timeframe}, #{item.barTime}, #{item.fqt}, #{item.ma5}, #{item.ma10},
 			#{item.ma20}, #{item.ma60}, #{item.ema5}, #{item.ema10}, #{item.ema20}, #{item.ema60},
-			#{item.rsi14}, #{item.macd}, #{item.macdSignal}, #{item.macdHist}, #{item.bollMid},
+			#{item.rsi14}, #{item.atr14}, #{item.macd}, #{item.macdSignal}, #{item.macdHist}, #{item.bollMid},
 			#{item.bollUp}, #{item.bollLow}, #{item.kdjK}, #{item.kdjD}, #{item.kdjJ}, #{item.volMa5},
 			#{item.volMa10}, #{item.volMa20}, #{item.volMa60}, #{item.amtMa20}, #{item.volRatio20})
 		</foreach>
@@ -34,6 +52,7 @@
 			ema20 = VALUES(ema20),
 			ema60 = VALUES(ema60),
 			rsi14 = VALUES(rsi14),
+			atr14 = VALUES(atr14),
 			macd = VALUES(macd),
 			macd_signal = VALUES(macd_signal),
 			macd_hist = VALUES(macd_hist),

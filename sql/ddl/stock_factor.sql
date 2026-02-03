@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS stock_factor (
   ema20 DECIMAL(18,8),
   ema60 DECIMAL(18,8),
   rsi14 DECIMAL(18,8),
+  atr14 DECIMAL(18,8),
   macd DECIMAL(18,8),
   macd_signal DECIMAL(18,8),
   macd_hist DECIMAL(18,8),

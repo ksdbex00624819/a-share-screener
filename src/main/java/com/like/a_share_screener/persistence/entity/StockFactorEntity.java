@@ -20,6 +20,7 @@ public class StockFactorEntity {
 	private BigDecimal ema20;
 	private BigDecimal ema60;
 	private BigDecimal rsi14;
+	private BigDecimal atr14;
 	private BigDecimal macd;
 	private BigDecimal macdSignal;
 	private BigDecimal macdHist;
@@ -142,6 +143,14 @@ public class StockFactorEntity {
 
 	public void setRsi14(BigDecimal rsi14) {
 		this.rsi14 = rsi14;
+	}
+
+	public BigDecimal getAtr14() {
+		return atr14;
+	}
+
+	public void setAtr14(BigDecimal atr14) {
+		this.atr14 = atr14;
 	}
 
 	public BigDecimal getMacd() {

@@ -15,7 +15,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class EastmoneyKlineParser {
-	private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+	private static final DateTimeFormatter DATE_TIME_SECONDS_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+	private static final DateTimeFormatter DATE_TIME_MINUTES_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 	private final ObjectMapper objectMapper;
 
 	public EastmoneyKlineParser(ObjectMapper objectMapper) {
@@ -48,13 +50,10 @@ public class EastmoneyKlineParser {
 			throw new IllegalArgumentException("Unexpected kline line: " + line);
 		}
 		String timePart = parts[0];
-		boolean hasTime = timePart.contains(" ");
-		LocalDateTime barTime = hasTime
-				? LocalDateTime.parse(timePart, DATE_TIME_FORMAT)
-				: LocalDate.parse(timePart).atStartOfDay();
+		ParsedTime parsed = parseTimePart(timePart);
 		return new Candle(
-				barTime,
-				hasTime,
+				parsed.barTime(),
+				parsed.hasTime(),
 				toBigDecimal(parts[1]),
 				toBigDecimal(parts[3]),
 				toBigDecimal(parts[4]),
@@ -66,6 +65,41 @@ public class EastmoneyKlineParser {
 				toBigDecimal(parts[9]),
 				toBigDecimal(parts[10])
 		);
+	}
+
+	private ParsedTime parseTimePart(String timePart) {
+		LocalDateTime dateTime = tryParseDateTime(timePart, DATE_TIME_SECONDS_FORMAT);
+		if (dateTime != null) {
+			return new ParsedTime(dateTime, true);
+		}
+		dateTime = tryParseDateTime(timePart, DATE_TIME_MINUTES_FORMAT);
+		if (dateTime != null) {
+			return new ParsedTime(dateTime, true);
+		}
+		LocalDate date = tryParseDate(timePart, DATE_FORMAT);
+		if (date != null) {
+			return new ParsedTime(date.atStartOfDay(), false);
+		}
+		throw new IllegalArgumentException("Unexpected kline time: " + timePart);
+	}
+
+	private LocalDateTime tryParseDateTime(String value, DateTimeFormatter formatter) {
+		try {
+			return LocalDateTime.parse(value, formatter);
+		} catch (RuntimeException ex) {
+			return null;
+		}
+	}
+
+	private LocalDate tryParseDate(String value, DateTimeFormatter formatter) {
+		try {
+			return LocalDate.parse(value, formatter);
+		} catch (RuntimeException ex) {
+			return null;
+		}
+	}
+
+	private record ParsedTime(LocalDateTime barTime, boolean hasTime) {
 	}
 
 	private BigDecimal toBigDecimal(String value) {

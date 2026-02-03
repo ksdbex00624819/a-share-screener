@@ -37,6 +37,24 @@
 		</if>
 	</select>
 
+	<select id="selectNthNewestBarTime" resultType="java.time.LocalDateTime">
+		SELECT bar_time
+		FROM stock_kline
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+		ORDER BY bar_time DESC
+		LIMIT 1 OFFSET #{offset}
+	</select>
+
+	<delete id="deleteOlderThan">
+		DELETE FROM stock_kline
+		WHERE code = #{code}
+		  AND timeframe = #{timeframe}
+		  AND fqt = #{fqt}
+		  AND bar_time &lt; #{cutoff}
+	</delete>
+
 	<insert id="upsertBatch">
 		INSERT INTO stock_kline
 		(code, timeframe, bar_time, fqt, open, high, low, close, volume, amount, amplitude_pct, change_pct,

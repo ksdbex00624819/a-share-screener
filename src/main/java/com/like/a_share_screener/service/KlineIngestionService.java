@@ -8,6 +8,9 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Optional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -15,12 +18,16 @@ public class KlineIngestionService {
 	private static final ZoneId CHINA_ZONE = ZoneId.of("Asia/Shanghai");
 	private static final LocalTime DAILY_CLOSE = LocalTime.of(15, 0);
 	private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
+	private static final Logger log = LoggerFactory.getLogger(KlineIngestionService.class);
 	private final EastmoneyKlineClient client;
 	private final StockKlineService klineService;
+	private final KlineIngestionProperties properties;
 
-	public KlineIngestionService(EastmoneyKlineClient client, StockKlineService klineService) {
+	public KlineIngestionService(EastmoneyKlineClient client, StockKlineService klineService,
+			KlineIngestionProperties properties) {
 		this.client = client;
 		this.klineService = klineService;
+		this.properties = properties;
 	}
 
 	public int ingest(String secid, String timeframe, int klt, int fqt, String defaultBeg, String defaultEnd,
@@ -47,15 +54,21 @@ public class KlineIngestionService {
 			return 0;
 		}
 		List<Candle> normalized = candles.stream()
-				.map(candle -> normalizeTimeframe(candle, timeframe))
+				.map(candle -> normalizeTimeframe(candle, timeframe, secid))
+				.flatMap(Optional::stream)
 				.filter(candle -> latest == null || candle.barTime().isAfter(latest))
 				.toList();
-		return klineService.upsertBatch(secid, timeframe, fqt, normalized);
+		int upserted = klineService.upsertBatch(secid, timeframe, fqt, normalized);
+		int retainBars = properties.resolveRetentionBars(timeframe);
+		if (upserted > 0 && retainBars > 0) {
+			klineService.pruneOldBars(secid, timeframe, fqt, retainBars);
+		}
+		return upserted;
 	}
 
-	private Candle normalizeTimeframe(Candle candle, String timeframe) {
+	private Optional<Candle> normalizeTimeframe(Candle candle, String timeframe, String secid) {
 		if ("1d".equals(timeframe) || "1w".equals(timeframe)) {
-			return new Candle(
+			return Optional.of(new Candle(
 					candle.barTime().toLocalDate().atTime(DAILY_CLOSE),
 					candle.hasTime(),
 					candle.open(),
@@ -68,24 +81,13 @@ public class KlineIngestionService {
 					candle.changePct(),
 					candle.changeAmt(),
 					candle.turnoverPct()
-			);
+			));
 		}
 		if (!candle.hasTime()) {
-			return new Candle(
-					candle.barTime().toLocalDate().atTime(DAILY_CLOSE),
-					candle.hasTime(),
-					candle.open(),
-					candle.high(),
-					candle.low(),
-					candle.close(),
-					candle.volume(),
-					candle.amount(),
-					candle.amplitudePct(),
-					candle.changePct(),
-					candle.changeAmt(),
-					candle.turnoverPct()
-			);
+			log.error("Missing intraday time for secid={}, timeframe={}, barTime={}", secid, timeframe,
+					candle.barTime());
+			return Optional.empty();
 		}
-		return candle;
+		return Optional.of(candle);
 	}
 }

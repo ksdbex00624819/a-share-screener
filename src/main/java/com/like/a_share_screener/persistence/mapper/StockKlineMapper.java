@@ -15,5 +15,11 @@ public interface StockKlineMapper extends BaseMapper<StockKlineEntity> {
 			@Param("toInclusive") LocalDateTime toInclusive, @Param("limit") Integer limit,
 			@Param("asc") boolean asc);
 
+	LocalDateTime selectNthNewestBarTime(@Param("code") String code, @Param("timeframe") String timeframe,
+			@Param("fqt") int fqt, @Param("offset") int offset);
+
+	int deleteOlderThan(@Param("code") String code, @Param("timeframe") String timeframe,
+			@Param("fqt") int fqt, @Param("cutoff") LocalDateTime cutoff);
+
 	int upsertBatch(@Param("items") List<StockKlineEntity> items);
 }

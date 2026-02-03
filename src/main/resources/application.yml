@@ -25,25 +25,33 @@ eastmoney:
 
 kline:
   ingestion:
-    enabled-timeframes: ["1d"]
+    enabled-timeframes: ["1d", "60m", "1w"]
     klt-mapping:
       1d: 101
       1w: 102
       60m: 60
+    retention-bars-by-timeframe:
+      60m: 2000
+      1w: 0
+      1d: 0
     fqt: 1
     default-beg: "0"
     default-end: "20500101"
-    recent-limit: 3000
+    recent-limit: 120
     cron: "0 30 15 * * MON-FRI"
     max-universe-size: 300
 
 factor:
   compute:
-    enabled-timeframes: ["1d"]
+    enabled-timeframes: ["1d", "60m", "1w"]
     seed-bars-by-timeframe:
       1d: 300
       1w: 200
       60m: 500
+    persist-bars-by-timeframe:
+      60m: 2000
+      1w: 0
+      1d: 0
     fqt: 1
     cron: "0 0 16 * * MON-FRI"
     max-universe-size: 300

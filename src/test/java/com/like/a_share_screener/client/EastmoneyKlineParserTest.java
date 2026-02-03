@@ -57,4 +57,14 @@ class EastmoneyKlineParserTest {
 		Assertions.assertThat(candle.barTime()).isEqualTo(LocalDateTime.of(2024, 1, 2, 10, 30));
 		Assertions.assertThat(candle.hasTime()).isTrue();
 	}
+
+	@Test
+	void parseKlineLineWithSeconds() {
+		EastmoneyKlineParser parser = new EastmoneyKlineParser(new ObjectMapper());
+		Candle candle = parser.parseKlineLine(
+				"2024-01-02 10:30:15,12.34,12.50,12.60,12.20,123456,987654.32,3.21,1.29,0.16,0.45");
+
+		Assertions.assertThat(candle.barTime()).isEqualTo(LocalDateTime.of(2024, 1, 2, 10, 30, 15));
+		Assertions.assertThat(candle.hasTime()).isTrue();
+	}
 }
