@@ -14,11 +14,16 @@ public class KlineIngestionProperties {
 	private String cron = "0 30 15 * * MON-FRI";
 	private int maxUniverseSize = 300;
 	private int recentLimit = 3000;
-	private List<String> enabledTimeframes = new ArrayList<>(List.of("1d"));
+	private List<String> enabledTimeframes = new ArrayList<>(List.of("1d", "60m", "1w"));
 	private Map<String, Integer> kltMapping = new LinkedHashMap<>(Map.of(
 			"1d", 101,
 			"1w", 102,
 			"60m", 60
+	));
+	private Map<String, Integer> retentionBarsByTimeframe = new LinkedHashMap<>(Map.of(
+			"60m", 2000,
+			"1w", 0,
+			"1d", 0
 	));
 
 	public int getFqt() {
@@ -85,11 +90,26 @@ public class KlineIngestionProperties {
 		this.kltMapping = kltMapping;
 	}
 
+	public Map<String, Integer> getRetentionBarsByTimeframe() {
+		return retentionBarsByTimeframe;
+	}
+
+	public void setRetentionBarsByTimeframe(Map<String, Integer> retentionBarsByTimeframe) {
+		this.retentionBarsByTimeframe = retentionBarsByTimeframe;
+	}
+
 	public int resolveKlt(String timeframe) {
 		Integer value = kltMapping.get(timeframe);
 		if (value == null) {
 			throw new IllegalArgumentException("Missing klt mapping for timeframe " + timeframe);
 		}
 		return value;
+	}
+
+	public int resolveRetentionBars(String timeframe) {
+		if (retentionBarsByTimeframe == null) {
+			return 0;
+		}
+		return retentionBarsByTimeframe.getOrDefault(timeframe, 0);
 	}
 }

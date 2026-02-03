@@ -14,6 +14,7 @@ public record FactorRow(
 		BigDecimal ema20,
 		BigDecimal ema60,
 		BigDecimal rsi14,
+		BigDecimal atr14,
 		BigDecimal macd,
 		BigDecimal macdSignal,
 		BigDecimal macdHist,

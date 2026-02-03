@@ -11,11 +11,16 @@ public class FactorComputationProperties {
 	private int fqt = 1;
 	private int maxUniverseSize = 300;
 	private String cron = "0 0 16 * * MON-FRI";
-	private List<String> enabledTimeframes = new ArrayList<>(List.of("1d"));
+	private List<String> enabledTimeframes = new ArrayList<>(List.of("1d", "60m", "1w"));
 	private Map<String, Integer> seedBarsByTimeframe = new LinkedHashMap<>(Map.of(
 			"1d", 300,
 			"1w", 200,
 			"60m", 500
+	));
+	private Map<String, Integer> persistBarsByTimeframe = new LinkedHashMap<>(Map.of(
+			"60m", 2000,
+			"1w", 0,
+			"1d", 0
 	));
 
 	public int getFqt() {
@@ -58,7 +63,22 @@ public class FactorComputationProperties {
 		this.seedBarsByTimeframe = seedBarsByTimeframe;
 	}
 
+	public Map<String, Integer> getPersistBarsByTimeframe() {
+		return persistBarsByTimeframe;
+	}
+
+	public void setPersistBarsByTimeframe(Map<String, Integer> persistBarsByTimeframe) {
+		this.persistBarsByTimeframe = persistBarsByTimeframe;
+	}
+
 	public int resolveSeedBars(String timeframe) {
 		return seedBarsByTimeframe.getOrDefault(timeframe, 300);
+	}
+
+	public int resolvePersistBars(String timeframe) {
+		if (persistBarsByTimeframe == null) {
+			return 0;
+		}
+		return persistBarsByTimeframe.getOrDefault(timeframe, 0);
 	}
 }

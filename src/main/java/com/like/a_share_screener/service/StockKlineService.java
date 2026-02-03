@@ -44,6 +44,17 @@ public class StockKlineService {
 		return mapper.selectBars(code, timeframe, fqt, fromInclusive, toInclusive, limit, asc);
 	}
 
+	public int pruneOldBars(String code, String timeframe, int fqt, int retainN) {
+		if (!StringUtils.hasText(code) || !StringUtils.hasText(timeframe) || retainN <= 0) {
+			return 0;
+		}
+		LocalDateTime cutoff = mapper.selectNthNewestBarTime(code, timeframe, fqt, retainN - 1);
+		if (cutoff == null) {
+			return 0;
+		}
+		return mapper.deleteOlderThan(code, timeframe, fqt, cutoff);
+	}
+
 	private StockKlineEntity toEntity(String code, String timeframe, int fqt, Candle candle) {
 		StockKlineEntity entity = new StockKlineEntity();
 		entity.setCode(code);

@@ -15,9 +15,15 @@ spring:
 
 kline:
   ingestion:
-    enabled-timeframes: ["1d"]
+    enabled-timeframes: ["1d", "60m", "1w"]
     klt-mapping:
       1d: 101
+      1w: 102
+      60m: 60
+    retention-bars-by-timeframe:
+      60m: 5
+      1w: 0
+      1d: 0
     fqt: 1
     default-beg: "20240101"
     default-end: "20500101"
@@ -26,8 +32,14 @@ kline:
 
 factor:
   compute:
-    enabled-timeframes: ["1d"]
+    enabled-timeframes: ["1d", "60m", "1w"]
     seed-bars-by-timeframe:
-      1d: 300
+      1d: 30
+      1w: 20
+      60m: 30
+    persist-bars-by-timeframe:
+      60m: 0
+      1w: 0
+      1d: 0
     fqt: 1
     max-universe-size: 300

@@ -35,6 +35,17 @@ public class StockFactorService {
 		return mapper.upsertBatch(items);
 	}
 
+	public int pruneOldFactors(String code, String timeframe, int fqt, int retainN) {
+		if (!StringUtils.hasText(code) || !StringUtils.hasText(timeframe) || retainN <= 0) {
+			return 0;
+		}
+		LocalDateTime cutoff = mapper.selectNthNewestBarTime(code, timeframe, fqt, retainN - 1);
+		if (cutoff == null) {
+			return 0;
+		}
+		return mapper.deleteOlderThan(code, timeframe, fqt, cutoff);
+	}
+
 	private StockFactorEntity toEntity(String code, String timeframe, int fqt, FactorRow row) {
 		StockFactorEntity entity = new StockFactorEntity();
 		entity.setCode(code);
@@ -50,6 +61,7 @@ public class StockFactorService {
 		entity.setEma20(row.ema20());
 		entity.setEma60(row.ema60());
 		entity.setRsi14(row.rsi14());
+		entity.setAtr14(row.atr14());
 		entity.setMacd(row.macd());
 		entity.setMacdSignal(row.macdSignal());
 		entity.setMacdHist(row.macdHist());

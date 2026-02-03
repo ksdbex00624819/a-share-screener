@@ -17,6 +17,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Bar;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
+import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -74,6 +75,7 @@ public class FactorComputeService {
 		EMAIndicator ema20 = new EMAIndicator(close, 20);
 		EMAIndicator ema60 = new EMAIndicator(close, 60);
 		RSIIndicator rsi14 = new RSIIndicator(close, 14);
+		ATRIndicator atr14 = new ATRIndicator(series, 14);
 		MACDIndicator macd = new MACDIndicator(close, 12, 26);
 		EMAIndicator macdSignal = new EMAIndicator(macd, 9);
 		BollingerBandsMiddleIndicator bollMid = new BollingerBandsMiddleIndicator(sma20);
@@ -117,6 +119,7 @@ public class FactorComputeService {
 					toDecimal(ema20, i),
 					toDecimal(ema60, i),
 					toDecimal(rsi14, i),
+					toDecimal(atr14, i),
 					toDecimal(macd, i),
 					toDecimal(macdSignal, i),
 					toDecimal(subtract(macdValue, macdSignalValue), macdStable),
@@ -138,7 +141,11 @@ public class FactorComputeService {
 		if (toUpsert.isEmpty()) {
 			return 0;
 		}
-		factorService.upsertBatch(code, timeframe, properties.getFqt(), toUpsert);
+		int upserted = factorService.upsertBatch(code, timeframe, properties.getFqt(), toUpsert);
+		int retainBars = properties.resolvePersistBars(timeframe);
+		if (upserted > 0 && retainBars > 0) {
+			factorService.pruneOldFactors(code, timeframe, properties.getFqt(), retainBars);
+		}
 		return toUpsert.size();
 	}
 

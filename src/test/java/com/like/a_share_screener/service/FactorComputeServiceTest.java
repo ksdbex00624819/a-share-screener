@@ -121,6 +121,35 @@ class FactorComputeServiceTest {
 		assertThat(factors).hasSize(10);
 		assertThat(factors.get(0).getMa20()).isNull();
 		assertThat(factors.get(0).getVolMa20()).isNull();
+		assertThat(factors.get(0).getAtr14()).isNull();
+	}
+
+	@Test
+	void atrComputedForMultipleTimeframes() {
+		String code = "000005";
+		klineMapper.upsertBatch(buildKlines(code, "1d", LocalDate.of(2024, 5, 1).atTime(15, 0), 20, 100));
+		klineMapper.upsertBatch(buildKlines(code, "60m", LocalDateTime.of(2024, 5, 1, 9, 30), 20, 200));
+
+		computeService.computeFactorsForCode(code, "1d");
+		computeService.computeFactorsForCode(code, "60m");
+
+		List<StockFactorEntity> daily = factorMapper.selectList(
+				new LambdaQueryWrapper<StockFactorEntity>()
+						.eq(StockFactorEntity::getCode, code)
+						.eq(StockFactorEntity::getTimeframe, "1d")
+						.orderByAsc(StockFactorEntity::getBarTime));
+		List<StockFactorEntity> hourly = factorMapper.selectList(
+				new LambdaQueryWrapper<StockFactorEntity>()
+						.eq(StockFactorEntity::getCode, code)
+						.eq(StockFactorEntity::getTimeframe, "60m")
+						.orderByAsc(StockFactorEntity::getBarTime));
+
+		assertThat(daily).hasSize(20);
+		assertThat(hourly).hasSize(20);
+		assertThat(daily.get(13).getAtr14()).isNull();
+		assertThat(daily.get(14).getAtr14()).isNotNull().isPositive();
+		assertThat(hourly.get(13).getAtr14()).isNull();
+		assertThat(hourly.get(14).getAtr14()).isNotNull().isPositive();
 	}
 
 	private long countFactors(String code, String timeframe) {
