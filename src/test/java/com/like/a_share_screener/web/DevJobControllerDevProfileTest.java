@@ -1,5 +1,6 @@
 package com.like.a_share_screener.web;
 
+import com.baomidou.mybatisplus.autoconfigure.MybatisPlusAutoConfiguration;
 import com.like.a_share_screener.job.FactorComputationJob;
 import com.like.a_share_screener.job.JobRunOverrides;
 import com.like.a_share_screener.job.JobRunResult;
@@ -11,10 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -26,10 +28,19 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
+@WebMvcTest(
+		controllers = DevJobController.class,
+		excludeAutoConfiguration = {
+				DataSourceAutoConfiguration.class,
+				MybatisPlusAutoConfiguration.class
+		}
+)
 @ActiveProfiles("dev")
+@TestPropertySource(properties = {
+		"dev.manual-jobs.enabled=true"
+})
 class DevJobControllerDevProfileTest {
+
 	private static final Instant STARTED_AT = Instant.parse("2024-01-01T00:00:00Z");
 	private static final Instant FINISHED_AT = Instant.parse("2024-01-01T00:00:00Z");
 	private static final JobRunResult SUCCESS_RESULT =
@@ -38,13 +49,13 @@ class DevJobControllerDevProfileTest {
 	@Autowired
 	private MockMvc mockMvc;
 
-	@MockBean
+	@MockitoBean
 	private StockBasicSyncJob stockBasicSyncJob;
 
-	@MockBean
+	@MockitoBean
 	private KlineIngestionJob klineIngestionJob;
 
-	@MockBean
+	@MockitoBean
 	private FactorComputationJob factorComputationJob;
 
 	@BeforeEach
