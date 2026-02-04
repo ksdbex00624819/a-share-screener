@@ -8,6 +8,7 @@ import com.like.a_share_screener.service.KlineIngestionProperties;
 import com.like.a_share_screener.service.KlineIngestionResult;
 import com.like.a_share_screener.service.KlineIngestionService;
 import com.like.a_share_screener.service.StockBasicService;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -20,6 +21,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.lang.Nullable;
 
 @Component
 public class KlineIngestionJob {
@@ -40,51 +42,76 @@ public class KlineIngestionJob {
 
 	@Scheduled(cron = "${kline.ingestion.cron:0 30 15 * * MON-FRI}", zone = "Asia/Shanghai")
 	public void ingestKlines() {
-		LocalDate end = LocalDate.now(CHINA_ZONE);
-		List<StockBasicEntity> universe = stockBasicService.listMainBoardActive(properties.getMaxUniverseSize());
-		if (universe.isEmpty()) {
-			log.warn("Kline ingestion skipped: no MAIN ACTIVE stocks found");
-			return;
-		}
-		for (String timeframe : properties.getEnabledTimeframes()) {
-			int klt = properties.resolveKlt(timeframe);
-			int successCount = 0;
-			int failCount = 0;
-			int doneCount = 0;
-			Map<String, Integer> rcStats = new LinkedHashMap<>();
-			List<String> failedSamples = new ArrayList<>();
-			for (StockBasicEntity stock : universe) {
-				String secid = stock.getSecid();
-				String code = stock.getCode();
-				long startTime = System.nanoTime();
-				doneCount++;
-				try {
-					KlineIngestionResult result = ingestionService.ingest(code, secid, timeframe, klt,
-							properties.getFqt(), properties.getDefaultBeg(), properties.getDefaultEnd(), end,
-							properties.getRecentLimit());
-					successCount++;
-					if (requestProperties.isLogSuccess()
-							&& shouldLogEvery(doneCount, requestProperties.getLogSuccessEveryN())) {
-						long costMs = (System.nanoTime() - startTime) / 1_000_000;
-						log.info("kline_fetch_ok code={} secid={} timeframe={} fqt={} bars={} first={} last={} costMs={}",
-								code, secid, timeframe, properties.getFqt(), result.fetchedBars(),
-								result.firstBarTime(), result.lastBarTime(), costMs);
-					}
-				} catch (Exception ex) {
-					failCount++;
-					if (failedSamples.size() < 20) {
-						failedSamples.add(code);
-					}
-					String reason = classifyFailure(ex);
-					rcStats.merge(reason, 1, Integer::sum);
-				}
-				if (shouldLogEvery(doneCount, requestProperties.getLogProgressEveryN())) {
-					log.info("kline_ingestion_progress done={}/{} ok={} fail={}",
-							doneCount, universe.size(), successCount, failCount);
-				}
+		runOnce(null);
+	}
+
+	public JobRunResult runOnce(@Nullable JobRunOverrides overrides) {
+		Instant startedAt = Instant.now();
+		try {
+			List<String> timeframes = overrides != null && overrides.getTimeframes() != null
+					? overrides.getTimeframes()
+					: properties.getEnabledTimeframes();
+			int maxUniverseSize = overrides != null && overrides.getMaxUniverseSize() != null
+					? overrides.getMaxUniverseSize()
+					: properties.getMaxUniverseSize();
+			LocalDate end = LocalDate.now(CHINA_ZONE);
+			List<StockBasicEntity> universe = stockBasicService.listMainBoardActive(maxUniverseSize);
+			if (universe.isEmpty()) {
+				log.warn("Kline ingestion skipped: no MAIN ACTIVE stocks found");
+				Instant finishedAt = Instant.now();
+				return JobRunResult.success(startedAt, finishedAt, 0, 0, 0);
 			}
-			log.info("kline_ingestion_summary total={} okSymbols={} failSymbols={} rcStats={} failedSamples={}",
-					universe.size(), successCount, failCount, rcStats, String.join(",", failedSamples));
+			int successTotal = 0;
+			int failTotal = 0;
+			for (String timeframe : timeframes) {
+				int klt = properties.resolveKlt(timeframe);
+				int successCount = 0;
+				int failCount = 0;
+				int doneCount = 0;
+				Map<String, Integer> rcStats = new LinkedHashMap<>();
+				List<String> failedSamples = new ArrayList<>();
+				for (StockBasicEntity stock : universe) {
+					String secid = stock.getSecid();
+					String code = stock.getCode();
+					long startTime = System.nanoTime();
+					doneCount++;
+					try {
+						KlineIngestionResult result = ingestionService.ingest(code, secid, timeframe, klt,
+								properties.getFqt(), properties.getDefaultBeg(), properties.getDefaultEnd(), end,
+								properties.getRecentLimit());
+						successCount++;
+						if (requestProperties.isLogSuccess()
+								&& shouldLogEvery(doneCount, requestProperties.getLogSuccessEveryN())) {
+							long costMs = (System.nanoTime() - startTime) / 1_000_000;
+							log.info("kline_fetch_ok code={} secid={} timeframe={} fqt={} bars={} first={} last={} costMs={}",
+									code, secid, timeframe, properties.getFqt(), result.fetchedBars(),
+									result.firstBarTime(), result.lastBarTime(), costMs);
+						}
+					} catch (Exception ex) {
+						failCount++;
+						if (failedSamples.size() < 20) {
+							failedSamples.add(code);
+						}
+						String reason = classifyFailure(ex);
+						rcStats.merge(reason, 1, Integer::sum);
+					}
+					if (shouldLogEvery(doneCount, requestProperties.getLogProgressEveryN())) {
+						log.info("kline_ingestion_progress done={}/{} ok={} fail={}",
+								doneCount, universe.size(), successCount, failCount);
+					}
+				}
+				successTotal += successCount;
+				failTotal += failCount;
+				log.info("kline_ingestion_summary total={} okSymbols={} failSymbols={} rcStats={} failedSamples={}",
+						universe.size(), successCount, failCount, rcStats, String.join(",", failedSamples));
+			}
+			int totalSymbols = universe.size() * timeframes.size();
+			Instant finishedAt = Instant.now();
+			return JobRunResult.success(startedAt, finishedAt, totalSymbols, successTotal, failTotal);
+		} catch (Exception ex) {
+			Instant finishedAt = Instant.now();
+			log.error("Kline ingestion failed", ex);
+			return JobRunResult.failure(startedAt, finishedAt, ex.getMessage());
 		}
 	}
 
